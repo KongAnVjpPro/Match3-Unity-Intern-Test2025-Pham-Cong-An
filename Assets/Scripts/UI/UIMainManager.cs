@@ -10,7 +10,7 @@ public class UIMainManager : MonoBehaviour
     private IMenu[] m_menuList;
 
     private GameManager m_gameManager;
-
+    public bool IsWin { get; private set; }
     private void Awake()
     {
         m_menuList = GetComponentsInChildren<IMenu>(true);
@@ -67,6 +67,7 @@ public class UIMainManager : MonoBehaviour
                 ShowMenu<UIPanelPause>();
                 break;
             case GameManager.eStateGame.GAME_OVER:
+                IsWin = m_gameManager.IsWin;
                 ShowMenu<UIPanelGameOver>();
                 break;
         }
@@ -77,14 +78,14 @@ public class UIMainManager : MonoBehaviour
         for (int i = 0; i < m_menuList.Length; i++)
         {
             IMenu menu = m_menuList[i];
-            if(menu is T)
+            if (menu is T)
             {
                 menu.Show();
             }
             else
             {
                 menu.Hide();
-            }            
+            }
         }
     }
 
@@ -118,4 +119,14 @@ public class UIMainManager : MonoBehaviour
     {
         m_gameManager.SetState(GameManager.eStateGame.GAME_STARTED);
     }
+    #region auto win and lose
+    internal void AutoWinLevel()
+    {
+        m_gameManager.LoadLevel(GameManager.eLevelMode.AUTO_WIN);
+    }
+    internal void AutoLoseLevel()
+    {
+        m_gameManager.LoadLevel(GameManager.eLevelMode.AUTO_LOSE);
+    }
+    #endregion
 }

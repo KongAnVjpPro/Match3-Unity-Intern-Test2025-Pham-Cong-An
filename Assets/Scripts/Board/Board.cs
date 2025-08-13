@@ -19,13 +19,16 @@ public class Board
 
     private int boardSizeY;
 
+    private int barSize;
+
     private Cell[,] m_cells;
 
     private Transform m_root;
 
     private int m_matchMin;
+    private BarController m_barController;
 
-    public Board(Transform transform, GameSettings gameSettings)
+    public Board(Transform transform, GameSettings gameSettings, bool isOnTimeMode = false)
     {
         m_root = transform;
 
@@ -33,16 +36,27 @@ public class Board
 
         this.boardSizeX = gameSettings.BoardSizeX;
         this.boardSizeY = gameSettings.BoardSizeY;
+        this.barSize = gameSettings.BarSize;
 
         m_cells = new Cell[boardSizeX, boardSizeY];
-
-        CreateBoard();
+        m_barController = new BarController(gameSettings.MatchesMin, barSize);
+        CreateBoard(isOnTimeMode);
     }
-
-    private void CreateBoard()
+    public void AutoMoveNext()
+    {
+        if (winOrder.Count == 0) return;
+        winOrder[0].OnClickHandle(this);
+        winOrder.RemoveAt(0);
+    }
+    private void CreateBoard(bool isOnTimeMode = false)
     {
         Vector3 origin = new Vector3(-boardSizeX * 0.5f + 0.5f, -boardSizeY * 0.5f + 0.5f, 0f);
+        Vector3 originBar = new Vector3(-barSize * 0.5f + 0.5f, -boardSizeY * 0.5f - 1f, 0f);
+
         GameObject prefabBG = Resources.Load<GameObject>(Constants.PREFAB_CELL_BACKGROUND);
+        GameObject prefabBar = Resources.Load<GameObject>(Constants.PREFAB_BAR_BACKGROUND);
+        //gen cell
+
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
@@ -52,28 +66,129 @@ public class Board
                 go.transform.SetParent(m_root);
 
                 Cell cell = go.GetComponent<Cell>();
-                cell.Setup(x, y);
+                cell.Setup(x, y, isOnTimeMode);
 
                 m_cells[x, y] = cell;
             }
         }
-
-        //set neighbours
-        for (int x = 0; x < boardSizeX; x++)
+        //gen bar
+        for (int i = 0; i < barSize; i++)
         {
-            for (int y = 0; y < boardSizeY; y++)
-            {
-                if (y + 1 < boardSizeY) m_cells[x, y].NeighbourUp = m_cells[x, y + 1];
-                if (x + 1 < boardSizeX) m_cells[x, y].NeighbourRight = m_cells[x + 1, y];
-                if (y > 0) m_cells[x, y].NeighbourBottom = m_cells[x, y - 1];
-                if (x > 0) m_cells[x, y].NeighbourLeft = m_cells[x - 1, y];
-            }
+            GameObject ba = GameObject.Instantiate(prefabBar);
+            ba.transform.position = originBar + new Vector3(i, 0f, 0f);
+            ba.transform.SetParent(m_root);
+
+            m_barController.InitView(ba);
+            // BarCell bCell = ba.GetComponent<BarCell>();
+            // barController.AddCell(bCell);
         }
 
+        //set neighbours
+        // for (int x = 0; x < boardSizeX; x++)
+        // {
+        //     for (int y = 0; y < boardSizeY; y++)
+        //     {
+        //         if (y + 1 < boardSizeY) m_cells[x, y].NeighbourUp = m_cells[x, y + 1];
+        //         if (x + 1 < boardSizeX) m_cells[x, y].NeighbourRight = m_cells[x + 1, y];
+        //         if (y > 0) m_cells[x, y].NeighbourBottom = m_cells[x, y - 1];
+        //         if (x > 0) m_cells[x, y].NeighbourLeft = m_cells[x - 1, y];
+        //     }
+        // }
+
     }
+    #region New logic
+    internal void AddCellToBar(Cell c)
+    {
+        if (c == null) return;
+        m_barController.AddCell(c);
+    }
+
+    internal void RemoveCellFromBar(Cell c)
+    {
+        if (c == null) return;
+        m_barController.RemoveCell(c);
+    }
+
+    public bool IsBarFull()
+    {
+        return m_barController.IsBarFull();
+    }
+    public int GetCurrentCellAmount()
+    {
+        int cellAmount = 0;
+        foreach (var cell in m_cells)
+        {
+            if (cell.Item == null) continue;
+            cellAmount++;
+        }
+        return cellAmount;
+    }
+    private List<Cell> winOrder = new List<Cell>();
+    private List<Cell> loseOrder = new List<Cell>();
+
+    //run after fill
+    public void AutoWin(bool value)
+    {
+        // winOrder = new List<Cell>();
+
+        autoWin = value;
+        if (autoWin) return;
+        winOrder = loseOrder;
+
+    }
+    private bool autoWin = false;
+    private List<bool> visitedLoseOrder = new List<bool>();
+    private List<int> loseOrderId = new List<int>();
+    #endregion
 
     internal void Fill()
     {
+
+        List<NormalItem.eNormalType> types = new List<NormalItem.eNormalType>();
+        types = Enum.GetValues(typeof(NormalItem.eNormalType)).Cast<NormalItem.eNormalType>().ToList();
+
+        int totalCell = boardSizeX * boardSizeY;
+        int baseCellCount = (totalCell / (types.Count * m_matchMin)) * m_matchMin;
+        int remainCell = totalCell - baseCellCount * types.Count;
+
+        // Debug.Log("" + totalCell + " " + baseCellCount + " " + remainCell);
+
+        List<NormalItem.eNormalType> itemToFill = new List<NormalItem.eNormalType>();
+        foreach (NormalItem.eNormalType type in types)
+        {
+            for (int i = 0; i < baseCellCount; i++)
+            {
+                itemToFill.Add(type);
+                visitedLoseOrder.Add(false);
+            }
+        }
+
+        if (remainCell > 0)
+        {
+            int cntItem = 0;
+            int idItem = -1;
+            // Unity.Random rd = new System.Random();
+            while (remainCell > 0)
+            {
+                if (idItem != -1 && cntItem < m_matchMin)
+                {
+                    itemToFill.Add(types[idItem]);
+                    visitedLoseOrder.Add(false);
+
+                    remainCell--;
+                    cntItem++;
+                }
+                else
+                {
+                    idItem = UnityEngine.Random.Range(0, types.Count);
+                    cntItem = 0;
+                }
+            }
+        }
+
+        //auto win solution
+
+        // Debug.Log(itemToFill.Count);
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
@@ -81,56 +196,104 @@ public class Board
                 Cell cell = m_cells[x, y];
                 NormalItem item = new NormalItem();
 
-                List<NormalItem.eNormalType> types = new List<NormalItem.eNormalType>();
-                if (cell.NeighbourBottom != null)
-                {
-                    NormalItem nitem = cell.NeighbourBottom.Item as NormalItem;
-                    if (nitem != null)
-                    {
-                        types.Add(nitem.ItemType);
-                    }
-                }
+                // int itemId = UnityEngine.Random.Range(0, itemToFill.Count);
+                int itemId = x * boardSizeY + y;
 
-                if (cell.NeighbourLeft != null)
-                {
-                    NormalItem nitem = cell.NeighbourLeft.Item as NormalItem;
-                    if (nitem != null)
-                    {
-                        types.Add(nitem.ItemType);
-                    }
-                }
-
-                item.SetType(Utils.GetRandomNormalTypeExcept(types.ToArray()));
+                item.SetType(itemToFill[itemId]);
                 item.SetView();
                 item.SetViewRoot(m_root);
 
                 cell.Assign(item);
                 cell.ApplyItemPosition(false);
+                winOrder.Add(cell);
+                // itemToFill.RemoveAt(itemId);
             }
+        }
+
+        //shuffle
+        Shuffle();
+        // if (autoWin) return;
+
+        //gen lose path
+        GenerateLosePath();
+    }
+    void GenerateLosePath()
+    {
+        if (winOrder.Count == 0) return;
+        BarController tmp_bar = new BarController(m_matchMin, barSize);
+        int step = m_cells.Length;
+        while (!tmp_bar.IsBarFull() && step > 0)
+        {
+            NextWorstMove(tmp_bar);
+            step--;
+        }
+
+    }
+    void NextWorstMove(BarController tmp_bar)
+    {
+        int idItem = -1;
+        int tmpCount = m_matchMin + 1;
+        for (int i = 0; i < visitedLoseOrder.Count; i++)
+        {
+            if (visitedLoseOrder[i]) continue;
+            int cntItem = tmp_bar.FindAmountCellSameType(winOrder[i]);
+            if (cntItem == -1)
+            {
+                idItem = i;
+                break;
+            }
+            if (tmpCount >= cntItem)
+            {
+                tmpCount = cntItem;
+                idItem = i;
+            }
+            //check trong so
+        }
+        if (idItem != -1)
+        {
+            tmp_bar.AddCellPseudo(winOrder[idItem]);
+            visitedLoseOrder[idItem] = true;
+            loseOrder.Add(winOrder[idItem]);
+        }
+        else //visitedFull
+        {
+
+        }
+    }
+    private void ReOrder(int step)
+    {
+        // m_barController
+        if (m_barController.IsBarFull())
+        {
+            return;
         }
     }
 
     internal void Shuffle()
     {
-        List<Item> list = new List<Item>();
-        for (int x = 0; x < boardSizeX; x++)
-        {
-            for (int y = 0; y < boardSizeY; y++)
-            {
-                list.Add(m_cells[x, y].Item);
-                m_cells[x, y].Free();
-            }
-        }
+        Vector3 origin = new Vector3(-boardSizeX * 0.5f + 0.5f, -boardSizeY * 0.5f + 0.5f, 0f);
+        // List<Cell> list = new List<Cell>();
+        // for (int x = 0; x < boardSizeX; x++)
+        // {
+        //     for (int y = 0; y < boardSizeY; y++)
+        //     {
+        //         list.Add(m_cells[x, y]);
+        //         // m_cells[x, y].Free();
+        //     }
+        // }
+        //  go.transform.position = origin + new Vector3(x, y, 0f);
 
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
             {
-                int rnd = UnityEngine.Random.Range(0, list.Count);
-                m_cells[x, y].Assign(list[rnd]);
-                m_cells[x, y].ApplyItemMoveToPosition();
-
-                list.RemoveAt(rnd);
+                // int rnd = UnityEngine.Random.Range(0, list.Count);
+                int rndX = UnityEngine.Random.Range(0, boardSizeX);
+                int rndY = UnityEngine.Random.Range(0, boardSizeY);
+                // m_cells[x, y].Assign(list[rnd]);
+                // m_cells[x, y].ApplyItemMoveToPosition();
+                // list.RemoveAt(rnd);
+                Swap(m_cells[x, y], m_cells[rndX, rndY]);
             }
         }
     }
@@ -181,7 +344,23 @@ public class Board
         item.View.DOMove(cell2.transform.position, 0.3f);
         item2.View.DOMove(cell1.transform.position, 0.3f).OnComplete(() => { if (callback != null) callback(); });
     }
+    public void Swap(Cell cell1, Cell cell2)
+    {
+        // Sequence s = DOTween.Sequence();
+        Vector3 cell1Pos = cell1.transform.position;
+        Vector3 cell2Pos = cell2.transform.position;
 
+        cell1.transform.position = cell2Pos;
+        cell2.transform.position = cell1Pos;
+
+        cell1.ApplyItemMoveToPosition();
+        cell2.ApplyItemMoveToPosition();
+
+        cell1.SetOriginPos(cell2Pos);
+        cell2.SetOriginPos(cell1Pos);
+        // s.Join(cell1.transform.DOMove(cell2Pos, 0.3f));
+        // s.Join(cell2.transform.DOMove(cell1Pos, 0.3f));
+    }
     public List<Cell> GetHorizontalMatches(Cell cell)
     {
         List<Cell> list = new List<Cell>();
@@ -350,7 +529,7 @@ public class Board
         var dir = GetMatchDirection(matches);
 
         var bonus = matches.Where(x => x.Item is BonusItem).FirstOrDefault();
-        if(bonus == null)
+        if (bonus == null)
         {
             return matches;
         }

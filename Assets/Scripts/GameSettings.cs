@@ -15,4 +15,7 @@ public class GameSettings : ScriptableObject
     public float LevelTime = 30f;
 
     public float TimeForHint = 5f;
+    [Header("New prop")]
+    public int BarSize = 5;
+    public float AutoPlayDelay = 0.5f;
 }

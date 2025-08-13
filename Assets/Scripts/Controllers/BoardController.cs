@@ -30,6 +30,31 @@ public class BoardController : MonoBehaviour
     private bool m_hintIsShown;
 
     private bool m_gameOver;
+    // private Bar m_bar;
+    public bool IsAutoPlay { get; set; }
+    private bool isAutoWin;
+    public bool IsAutoWin
+    {
+        get => isAutoWin;
+        set
+        {
+            isAutoWin = value;
+            // if (value)
+            // {
+            //     m_board.AutoWin();
+            // }
+            // else
+            // {
+            //     m_board.AutoLose();
+            // }
+            m_board.AutoWin(value);
+        }
+    }
+    private float m_autoPlayDelay;
+
+    private float m_currentDelay = 0;
+
+    private int m_currentCellAmount = 10;//incr or dec depend on mode
 
     public void StartGame(GameManager gameManager, GameSettings gameSettings)
     {
@@ -41,7 +66,11 @@ public class BoardController : MonoBehaviour
 
         m_cam = Camera.main;
 
-        m_board = new Board(this.transform, gameSettings);
+        m_board = new Board(this.transform, gameSettings, gameManager.CurrentMode == GameManager.eLevelMode.TIMER);
+
+        m_autoPlayDelay = gameSettings.AutoPlayDelay;
+
+        m_currentCellAmount = gameSettings.BoardSizeX * gameSettings.BoardSizeY;
 
         Fill();
     }
@@ -49,7 +78,7 @@ public class BoardController : MonoBehaviour
     private void Fill()
     {
         m_board.Fill();
-        FindMatchesAndCollapse();
+        // FindMatchesAndCollapse();
     }
 
     private void OnGameStateChange(GameManager.eStateGame state)
@@ -64,7 +93,8 @@ public class BoardController : MonoBehaviour
                 break;
             case GameManager.eStateGame.GAME_OVER:
                 m_gameOver = true;
-                StopHints();
+                IsAutoPlay = false;
+                // StopHints();
                 break;
         }
     }
@@ -75,24 +105,30 @@ public class BoardController : MonoBehaviour
         if (m_gameOver) return;
         if (IsBusy) return;
 
-        if (!m_hintIsShown)
+        //tapping cell
+        if (IsAutoPlay)
         {
-            m_timeAfterFill += Time.deltaTime;
-            if (m_timeAfterFill > m_gameSettings.TimeForHint)
+            if (m_currentDelay < m_autoPlayDelay)
             {
-                m_timeAfterFill = 0f;
-                ShowHint();
+                m_currentDelay += Time.deltaTime;
+                return;
             }
+            AutoMove();
+            m_currentDelay = 0;
+            return;
         }
-
         if (Input.GetMouseButtonDown(0))
         {
             var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit.collider != null)
-            {
-                m_isDragging = true;
-                m_hitCollider = hit.collider;
-            }
+            if (hit.collider == null) return;
+
+            // m_isDragging = true;
+            m_hitCollider = hit.collider;
+
+            Cell c = hit.collider.GetComponent<Cell>();
+            IsBusy = true;
+            // hit.collider.enabled = false;
+            ClickCellHandle(c);
         }
 
         if (Input.GetMouseButtonUp(0))
@@ -100,43 +136,51 @@ public class BoardController : MonoBehaviour
             ResetRayCast();
         }
 
-        if (Input.GetMouseButton(0) && m_isDragging)
-        {
-            var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit.collider != null)
-            {
-                if (m_hitCollider != null && m_hitCollider != hit.collider)
-                {
-                    StopHints();
 
-                    Cell c1 = m_hitCollider.GetComponent<Cell>();
-                    Cell c2 = hit.collider.GetComponent<Cell>();
-                    if (AreItemsNeighbor(c1, c2))
-                    {
-                        IsBusy = true;
-                        SetSortingLayer(c1, c2);
-                        m_board.Swap(c1, c2, () =>
-                        {
-                            FindMatchesAndCollapse(c1, c2);
-                        });
-
-                        ResetRayCast();
-                    }
-                }
-            }
-            else
-            {
-                ResetRayCast();
-            }
-        }
     }
 
     private void ResetRayCast()
     {
-        m_isDragging = false;
+        // m_isDragging = false;
         m_hitCollider = null;
     }
+    #region click cell logic
+    public int GetCurrentCellAmount()
+    {
+        return m_currentCellAmount;
+    }
+    private void ClickCellHandle(Cell cell)
+    {
 
+        if (cell == null) return;
+
+        //check if in bar in time mode
+        if (cell.IsOnBarInTimeMode())
+        {
+            m_currentCellAmount++;
+        }
+        else
+        {
+            m_currentCellAmount--;
+        }
+        //mode to board or from board to bar
+        cell.OnClickHandle(m_board);
+
+        IsBusy = false;
+        OnMoveEvent();
+    }
+    private void AutoMove()
+    {
+        IsBusy = false;
+        m_board.AutoMoveNext();
+        OnMoveEvent();
+    }
+    public bool IsBarFull()
+    {
+        return m_board.IsBarFull();
+
+    }
+    #endregion
     private void FindMatchesAndCollapse(Cell cell1, Cell cell2)
     {
         if (cell1.Item is BonusItem)
@@ -224,7 +268,7 @@ public class BoardController : MonoBehaviour
             matches[i].ExplodeItem();
         }
 
-        if(matches.Count > m_gameSettings.MatchesMin)
+        if (matches.Count > m_gameSettings.MatchesMin)
         {
             m_board.ConvertNormalToBonus(matches, cellEnd);
         }

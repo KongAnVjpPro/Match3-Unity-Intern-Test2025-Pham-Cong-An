@@ -19,11 +19,77 @@ public class Cell : MonoBehaviour
 
 
     public bool IsEmpty => Item == null;
+    #region new
+    public bool CanClick { get; private set; }
+    [SerializeField] private Collider2D selfCollider;
+    [Header("Level Time Mode")]
+    [SerializeField] private Vector3 originPos;
+    [SerializeField] private bool canClickAgain = false;//init in time mode = true
+    [SerializeField] private bool isOnBoard = true; // board or bar
+    void Awake()
+    {
+        LoadComponents();
+    }
+    protected virtual void LoadComponents()
+    {
+        LoadCollider();
+    }
+    protected virtual void LoadCollider()
+    {
+        if (this.selfCollider != null) return;
+        selfCollider = GetComponent<Collider2D>();
 
-    public void Setup(int cellX, int cellY)
+    }
+
+
+    public void SetOriginPos(Vector3 origin)
+    {
+        this.originPos = origin;
+    }
+    public bool IsOnBarInTimeMode()
+    {
+        return !isOnBoard && canClickAgain;
+    }
+    public void OnClickHandle(Board board)
+    {
+        if (!canClickAgain)//click 1 time in normal mode
+        {
+            // selfCollider.enabled = false;
+            EnableCollider(false);
+            board.AddCellToBar(this);
+            ApplyItemMoveToPosition();
+
+            isOnBoard = false;
+        }
+        else // click multiple in time mode
+        {
+            if (isOnBoard)//go to bar
+            {
+                board.AddCellToBar(this);
+                ApplyItemMoveToPosition();
+
+                isOnBoard = false;
+            }
+            else //go to board
+            {
+                board.RemoveCellFromBar(this);
+                ReturnToBoardPosition();
+
+                isOnBoard = true;
+
+            }
+        }
+
+    }
+
+
+
+    #endregion
+    public void Setup(int cellX, int cellY, bool isOnTimeMode = false)
     {
         this.BoardX = cellX;
         this.BoardY = cellY;
+        this.canClickAgain = isOnTimeMode;
     }
 
     public bool IsNeighbour(Cell other)
@@ -67,7 +133,10 @@ public class Cell : MonoBehaviour
     {
         return Item != null && other.Item != null && Item.IsSameType(other.Item);
     }
-
+    public void EnableCollider(bool enableValue)
+    {
+        this.selfCollider.enabled = enableValue;
+    }
     internal void ExplodeItem()
     {
         if (Item == null) return;
@@ -89,5 +158,10 @@ public class Cell : MonoBehaviour
     internal void ApplyItemMoveToPosition()
     {
         Item.AnimationMoveToPosition();
+    }
+    internal void ReturnToBoardPosition()
+    {
+        transform.position = originPos;
+        ApplyItemMoveToPosition();
     }
 }

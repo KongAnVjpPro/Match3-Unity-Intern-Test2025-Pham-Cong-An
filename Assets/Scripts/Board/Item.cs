@@ -56,6 +56,20 @@ public class Item
         }
     }
 
+    #region layer 
+    public void SetLayer(int layer, int numberLayer)
+    {
+        if (View == null) return;
+
+        SpriteRenderer sp = View.GetComponent<SpriteRenderer>();
+        if (sp)
+        {
+            sp.sortingOrder = 1 - layer;
+        }
+
+    }
+    #endregion
+
     public void SetSortingLayerHigher()
     {
         if (View == null) return;
@@ -98,11 +112,15 @@ public class Item
     {
         if (View)
         {
-            View.DOScale(0.1f, 0.1f).OnComplete(
+            View.DOScale(1.2f, 0.15f).OnComplete(
                 () =>
                 {
-                    GameObject.Destroy(View.gameObject);
-                    View = null;
+                    View.DOScale(0f, 0.1f).OnComplete(() =>
+                    {
+                        GameObject.Destroy(View.gameObject);
+                        View = null;
+                    });
+
                 }
                 );
         }

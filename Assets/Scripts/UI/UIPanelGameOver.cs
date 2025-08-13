@@ -5,18 +5,22 @@ using UnityEngine.UI;
 
 public class UIPanelGameOver : MonoBehaviour, IMenu
 {
-    [SerializeField] private Button btnClose;
+    [SerializeField] private Button btnCloseLose;
+    [SerializeField] private Button btnCloseWin;
 
     private UIMainManager m_mngr;
+    [SerializeField] private GameObject winPanel, losePanel;
 
     private void Awake()
     {
-        btnClose.onClick.AddListener(OnClickClose);
+        btnCloseLose.onClick.AddListener(OnClickClose);
+        btnCloseWin.onClick.AddListener(OnClickClose);
     }
 
     private void OnDestroy()
     {
-        if (btnClose) btnClose.onClick.RemoveAllListeners();
+        if (btnCloseLose) btnCloseLose.onClick.RemoveAllListeners();
+        if (btnCloseWin) btnCloseWin.onClick.RemoveAllListeners();
     }
 
     private void OnClickClose()
@@ -36,7 +40,13 @@ public class UIPanelGameOver : MonoBehaviour, IMenu
 
     public void Show()
     {
+        SetResult(m_mngr.IsWin);
         this.gameObject.SetActive(true);
     }
 
+    public void SetResult(bool isWin)
+    {
+        winPanel.SetActive(isWin);
+        losePanel.SetActive(!isWin);
+    }
 }

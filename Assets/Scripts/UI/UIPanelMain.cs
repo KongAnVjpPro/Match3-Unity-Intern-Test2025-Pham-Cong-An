@@ -9,6 +9,8 @@ public class UIPanelMain : MonoBehaviour, IMenu
     [SerializeField] private Button btnTimer;
 
     [SerializeField] private Button btnMoves;
+    [SerializeField] private Button btnAutoWin;
+    [SerializeField] private Button btnAutoLose;
 
     private UIMainManager m_mngr;
 
@@ -16,6 +18,8 @@ public class UIPanelMain : MonoBehaviour, IMenu
     {
         btnMoves.onClick.AddListener(OnClickMoves);
         btnTimer.onClick.AddListener(OnClickTimer);
+        btnAutoWin.onClick.AddListener(OnClickAutoWin);
+        btnAutoLose.onClick.AddListener(OnClickAutoLose);
     }
 
     private void OnDestroy()
@@ -38,7 +42,16 @@ public class UIPanelMain : MonoBehaviour, IMenu
     {
         m_mngr.LoadLevelMoves();
     }
-
+    #region auto win and lose
+    private void OnClickAutoWin()
+    {
+        m_mngr.AutoWinLevel();
+    }
+    private void OnClickAutoLose()
+    {
+        m_mngr.AutoLoseLevel();
+    }
+    #endregion
     public void Show()
     {
         this.gameObject.SetActive(true);
@@ -48,4 +61,5 @@ public class UIPanelMain : MonoBehaviour, IMenu
     {
         this.gameObject.SetActive(false);
     }
+
 }

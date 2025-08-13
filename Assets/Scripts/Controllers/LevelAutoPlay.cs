@@ -1,24 +1,29 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class LevelMoves : LevelCondition
+public class LevelAutoPlay : LevelCondition
 {
     private int m_moves;
 
     private BoardController m_board;
-
-    public override void Setup(float value, Text txt, BoardController board)
+    //move = so phan tu khi khoi tao, lose khi ban max
+    public override void Setup(float value, Text txt, BoardController board, bool AutoWin)
     {
-        base.Setup(value, txt, board);
+        base.Setup(value, txt, board, AutoWin);
 
         m_moves = (int)value;
 
         m_board = board;
 
         m_board.OnMoveEvent += OnMove;
+
+        m_board.IsAutoWin = AutoWin;
+
+        m_board.IsAutoPlay = true;
+
 
         UpdateText();
     }
@@ -32,6 +37,10 @@ public class LevelMoves : LevelCondition
         UpdateText();
 
         if (m_moves <= 0)
+        {
+            OnConditionComplete();
+        }
+        if (m_board.IsBarFull())
         {
             OnConditionComplete();
         }

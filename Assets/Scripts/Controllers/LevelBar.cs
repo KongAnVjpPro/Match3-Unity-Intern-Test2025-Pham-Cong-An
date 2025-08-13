@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class LevelMoves : LevelCondition
+public class LevelBar : LevelCondition
 {
     private int m_moves;
 
     private BoardController m_board;
-
+    //move = so phan tu khi khoi tao, lose khi ban max
     public override void Setup(float value, Text txt, BoardController board)
     {
         base.Setup(value, txt, board);
@@ -32,6 +32,10 @@ public class LevelMoves : LevelCondition
         UpdateText();
 
         if (m_moves <= 0)
+        {
+            OnConditionComplete();
+        }
+        if (m_board.IsBarFull())
         {
             OnConditionComplete();
         }

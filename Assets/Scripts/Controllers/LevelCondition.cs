@@ -17,16 +17,23 @@ public class LevelCondition : MonoBehaviour
         m_txt = txt;
     }
 
-    public virtual void Setup(float value, Text txt, GameManager mngr)
+    public virtual void Setup(float value, Text txt, GameManager mngr)//old
+    {
+        m_txt = txt;
+    }
+    public virtual void Setup(float value, Text txt, GameManager mngr, BoardController board)//time
+    {
+        m_txt = txt;
+    }
+    public virtual void Setup(float value, Text txt, BoardController board)//normal
     {
         m_txt = txt;
     }
 
-    public virtual void Setup(float value, Text txt, BoardController board)
+    public virtual void Setup(float value, Text txt, BoardController board, bool AutoWin)//auto win or lose
     {
         m_txt = txt;
     }
-
     protected virtual void UpdateText() { }
 
     protected void OnConditionComplete()
