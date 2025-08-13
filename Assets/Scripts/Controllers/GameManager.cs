@@ -158,6 +158,7 @@ public class GameManager : MonoBehaviour
         {
             IsWin = !m_boardController.IsBarFull();
         }
+        // IsWin = (m_boardController.GetCurrentCellAmount() <= 0);
 
 
         State = eStateGame.GAME_OVER;
