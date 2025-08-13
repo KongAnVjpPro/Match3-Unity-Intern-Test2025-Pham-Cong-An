@@ -19,4 +19,4 @@ MonoBehaviour:
   LevelTime: 60
   TimeForHint: 5
   BarSize: 5
-  AutoPlayDelay: 0.1
+  AutoPlayDelay: 0.5
